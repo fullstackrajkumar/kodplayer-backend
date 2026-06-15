@@ -1,0 +1,37 @@
+{
+  "name": "monorepo-backend-template",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Turbo monorepo template: public API, admin API, notification & webhook services, shared @mbt/api-common",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:admin": "PORT=8081 turbo run dev --filter=@mbt/admin-service",
+    "dev:api": "PORT=8080 turbo run dev --filter=@mbt/api-service",
+    "dev:notification": "NOTIFICATION_PORT=8082 turbo run dev --filter=@mbt/notification-service",
+    "migrate:up": "turbo run migrate:up --filter=@mbt/admin-service",
+    "lint": "turbo run lint",
+    "start:api": "PORT=4040 node services/api-service/dist/main.js",
+    "start:admin": "PORT=4041 node services/admin-service/dist/main.js",
+    "start:notification": "NOTIFICATION_PORT=4042 node services/notification-service/dist/main.js",
+    "start:pm2": "pm2 start ecosystem.config.cjs",
+    "start:pm2:prod": "mkdir -p logs && pm2 start ecosystem.config.cjs --env production",
+    "restart:pm2": "pm2 restart ecosystem.config.cjs --update-env",
+    "reload:pm2": "pm2 reload ecosystem.config.cjs --env production --update-env",
+    "stop:pm2": "pm2 stop ecosystem.config.cjs",
+    "delete:pm2": "pm2 delete ecosystem.config.cjs",
+    "logs:pm2": "pm2 logs",
+    "status:pm2": "pm2 status",
+    "format": "prettier --write \"**/*.{ts,md}\"",
+    "check-types": "turbo run check-types"
+  },
+  "devDependencies": {
+    "prettier": "^3.7.4",
+    "turbo": "^2.8.1",
+    "typescript": "5.9.2"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18"
+  }
+}

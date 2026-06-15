@@ -1,0 +1,100 @@
+# Example: nginx reverse proxy for your API host
+# Install: sudo cp deploy/nginx-mbt.conf.example /etc/nginx/sites-available/your-app
+#          sudo ln -s /etc/nginx/sites-available/your-app /etc/nginx/sites-enabled/
+#          sudo nginx -t && sudo systemctl reload nginx
+#
+# PM2 ports: 4040 api | 4041 admin | 4042 notification | 4043 webhooks — see ecosystem.config.cjs
+
+server {
+    listen 80;
+    server_name mbt.rajkumaryadav.online;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name mbt.rajkumaryadav.online;
+
+    # ssl_certificate /etc/letsencrypt/live/mbt.rajkumaryadav.online/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/mbt.rajkumaryadav.online/privkey.pem;
+
+    client_max_body_size 15m;
+
+    # Public customer API
+    location /v1/api {
+        proxy_pass http://127.0.0.1:4040;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Admin REST (admin panel)
+    location /v1/admin {
+        proxy_pass http://127.0.0.1:4041;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Admin Socket.IO namespace + engine (/admin/realtime/socket.io/…)
+    location /admin/realtime {
+        proxy_pass http://127.0.0.1:4041;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+    }
+
+    # Legacy clients using path=/socket.io at host root (remove after admin panel redeploy)
+    # location /socket.io/ {
+    #     proxy_pass http://127.0.0.1:4041;
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Upgrade $http_upgrade;
+    #     proxy_set_header Connection "upgrade";
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    #     proxy_set_header X-Forwarded-Proto $scheme;
+    #     proxy_read_timeout 86400;
+    # }
+
+    # Razorpay / payment webhooks (separate service; raw body preserved for signature)
+    location /v1/webhooks {
+        proxy_pass http://127.0.0.1:4043;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_request_buffering off;
+    }
+
+    # Notification service (internal + device register if exposed)
+    location /v1/notification {
+        proxy_pass http://127.0.0.1:4042;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Health (api-service)
+    location = /health {
+        proxy_pass http://127.0.0.1:4040/health;
+        proxy_set_header Host $host;
+    }
+
+    # Optional: static admin panel build (if served from same VM)
+    # location / {
+    #     root /var/www/mbt-admin;
+    #     try_files $uri $uri/ /index.html;
+    # }
+}
